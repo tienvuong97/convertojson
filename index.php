@@ -87,25 +87,17 @@
                 fwrite($file, $xml);
             }
             arrayToXml($lastRow, $worksheet);
-            $myJSON = array();
+            $myJSON = "{";
             for ($row = 2; $row <= $lastRow; $row++) {
-                $myObj = new stdClass();
                 $page = $worksheet->getCell('A' . $row)->getValue();
-
                 $content = file_get_contents($page);
-                $content = str_replace("&amp;", "&", $content);
-                $content = str_replace("&quot;", '“', $content);
-                $content = str_replace("Ebook | ", '', $content);
-                $content = str_replace("Ebook - ", '', $content);
-                $content = str_replace(" - Let's Talk About Agile Test Automation", '', $content);
-                $content = str_replace("Testing in Continuous Delivery LogiGear Corporation", 'Testing in Continuous Delivery', $content);
-                $content = str_replace("[Infographic]", '', $content);
                 $doc = new DOMDocument();
                 if ($doc->loadHTML($content)) {
                     $xpath = new DOMXpath($doc);
                     $objs = explode("https://www.logigear.com", $page);
-                    $myObj->type = ["COM_JLSITEMAP_TYPES_MENU"];
-                    
+                    $myJSON .= '"';
+                    $myJSON .= $objs[1];
+                    $myJSON .= '":{';
                     $elementsTitle = $xpath->query('//title');
                     if (!is_null($elementsTitle)) {
                         foreach ($elementsTitle as $element) {
@@ -115,27 +107,32 @@
                                 $tit = str_replace("l LogiGear", "", $tit);
                                 $tit = str_replace("| LogiGear", "", $tit);
                                 $tit = str_replace("| LogiGear Corporation", "", $tit);
-                                $myObj->title = $tit;
+                                $myJSON .= '"type":["COM_JLSITEMAP_TYPES_MENU"],';
+                                $myJSON .= '"title": "';
+                                $myJSON .= $tit;
+                                $myJSON .= '",';
+                                $myJSON .= '"level": ';
+                                $myJSON .= substr_count($objs[1], '/');
+                                $myJSON .= ',';
+                                $myJSON .= ' "loc": "';
+                                $myJSON .= $page;
+                                $myJSON .= '",';
+                                $myJSON .= ' "changefreq": "weekly",
+                                "changefreqValue": 4,
+                                "priority": "0.5",
+                                "exclude": false,
+                                "alternates": false';
+
                             }
                         }
                     }
-                    
-                    $myObj->link = $objs[1];
-                    var_dump( $myObj->link);
-                    $myObj->level = substr_count($objs[1], '/');
-                    $myObj->loc = $page;
-                    $myObj->changefreq = "weekly";
-                    $myObj->changefreqValue = 4;
-                    $myObj->priority = "0.5";
-                    $myObj->exclude = false;
-                    $myObj->alternates = false;
-
+             
+                    $myJSON .= '},';
                 }
-                array_push($myJSON, $myObj);
+                
             }
-
-            $myJSON = json_encode(($myJSON));
-            $myJSON = trim(preg_replace("/\s\s+/", ' ', $myJSON));
+            $myJSON = rtrim($myJSON,',');
+            $myJSON .= "}";
             $file = fopen($_POST['export-json'], "w");
             fwrite($file, $myJSON);
         }
